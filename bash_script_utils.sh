@@ -8,7 +8,7 @@
 # Description: This script provides good safe practice functions for bash scripts that
 # that are important for writing safe automated upgrade scripts.
 #
-# Original script: template.sh
+# Original script: source.sh
 # Original author: Samuel Leslie
 # Copyright (c) Samuel Leslie
 # Repository: https://github.com/ralish/bash-script-template
@@ -30,27 +30,14 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+#!/usr/bin/env bash
 
 # A best practices Bash script template with many useful functions. This file
-# combines the source.sh & script.sh files into a single script. If you want
-# your script to be entirely self-contained then this should be what you want!
-
-# Enable xtrace if the DEBUG environment variable is set
-if [[ ${DEBUG-} =~ ^1|yes|true$ ]]; then
-    set -o xtrace       # Trace the execution of the script (debug)
-fi
-
-# Only enable these shell behaviours if we're not being sourced
-# Approach via: https://stackoverflow.com/a/28776166/8787985
-if ! (return 0 2> /dev/null); then
-    # A better class of script...
-    set -o errexit      # Exit on most errors (see the manual)
-    set -o nounset      # Disallow expansion of unset variables
-    set -o pipefail     # Use last non-zero exit code in a pipeline
-fi
-
-# Enable errtrace or the error trap handler will not work as expected
-set -o errtrace         # Ensure the error trap handler is inherited
+# is suitable for sourcing into other scripts and so only contains functions
+# which are unlikely to need modification. It omits the following functions:
+# - main()
+# - parse_params()
+# - script_usage()
 
 # DESC: Handler for unexpected errors
 # ARGS: $1 (optional): Exit code (defaults to 1)
@@ -163,7 +150,7 @@ function script_init() {
     # Useful variables
     readonly orig_cwd="$PWD"
     readonly script_params="$*"
-    readonly script_path="${BASH_SOURCE[0]}"
+    readonly script_path="${BASH_SOURCE[1]}"
     script_dir="$(dirname "$script_path")"
     script_name="$(basename "$script_path")"
     readonly script_dir script_name
@@ -442,67 +429,5 @@ function run_as_root() {
         script_exit "Unable to run requested command as root: $*" 1
     fi
 }
-
-# DESC: Usage help
-# ARGS: None
-# OUTS: None
-function script_usage() {
-    cat << EOF
-Usage:
-     -h|--help                  Displays this help
-     -v|--verbose               Displays verbose output
-    -nc|--no-colour             Disables colour output
-    -cr|--cron                  Run silently unless we encounter an error
-EOF
-}
-
-# DESC: Parameter parser
-# ARGS: $@ (optional): Arguments provided to the script
-# OUTS: Variables indicating command-line parameters and options
-function parse_params() {
-    local param
-    while [[ $# -gt 0 ]]; do
-        param="$1"
-        shift
-        case $param in
-            -h | --help)
-                script_usage
-                exit 0
-            ;;
-            -v | --verbose)
-                verbose=true
-            ;;
-            -nc | --no-colour)
-                no_colour=true
-            ;;
-            -cr | --cron)
-                cron=true
-            ;;
-            *)
-                script_exit "Invalid parameter was provided: $param" 1
-            ;;
-        esac
-    done
-}
-
-# DESC: Main control flow
-# ARGS: $@ (optional): Arguments provided to the script
-# OUTS: None
-function main() {
-    trap script_trap_err ERR
-    trap script_trap_exit EXIT
-    
-    script_init "$@"
-    parse_params "$@"
-    cron_init
-    colour_init
-    #lock_init system
-}
-
-# Invoke main with args if not sourced
-# Approach via: https://stackoverflow.com/a/28776166/8787985
-if ! (return 0 2> /dev/null); then
-    main "$@"
-fi
 
 # vim: syntax=sh cc=80 tw=79 ts=4 sw=4 sts=4 et sr

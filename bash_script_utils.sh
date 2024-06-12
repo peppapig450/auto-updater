@@ -3,6 +3,7 @@
 #
 # Changes made:
 # - Renamed script to bash_script_utils.sh
+# - Added doas functionality to the superuse functions.
 # - Removed some of the functions that are not pertinent to this project
 #
 # Description: This script provides good safe practice functions for bash scripts that
@@ -157,7 +158,7 @@ function script_init() {
     
     # Important to always set as we use it in the exit handler
     # shellcheck disable=SC2155
-    readonly ta_none="$(tput sgr0 2> /dev/null || true)"
+    readonly ta_none="$(tput sgr0 2>/dev/null || true)"
 }
 
 # DESC: Initialise colour variables
@@ -170,51 +171,51 @@ function script_init() {
 function colour_init() {
     if [[ -z ${no_colour-} ]]; then
         # Text attributes
-        readonly ta_bold="$(tput bold 2> /dev/null || true)"
+        readonly ta_bold="$(tput bold 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly ta_uscore="$(tput smul 2> /dev/null || true)"
+        readonly ta_uscore="$(tput smul 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly ta_blink="$(tput blink 2> /dev/null || true)"
+        readonly ta_blink="$(tput blink 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly ta_reverse="$(tput rev 2> /dev/null || true)"
+        readonly ta_reverse="$(tput rev 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly ta_conceal="$(tput invis 2> /dev/null || true)"
+        readonly ta_conceal="$(tput invis 2>/dev/null || true)"
         printf '%b' "$ta_none"
         
         # Foreground codes
-        readonly fg_black="$(tput setaf 0 2> /dev/null || true)"
+        readonly fg_black="$(tput setaf 0 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly fg_blue="$(tput setaf 4 2> /dev/null || true)"
+        readonly fg_blue="$(tput setaf 4 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly fg_cyan="$(tput setaf 6 2> /dev/null || true)"
+        readonly fg_cyan="$(tput setaf 6 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly fg_green="$(tput setaf 2 2> /dev/null || true)"
+        readonly fg_green="$(tput setaf 2 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly fg_magenta="$(tput setaf 5 2> /dev/null || true)"
+        readonly fg_magenta="$(tput setaf 5 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly fg_red="$(tput setaf 1 2> /dev/null || true)"
+        readonly fg_red="$(tput setaf 1 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly fg_white="$(tput setaf 7 2> /dev/null || true)"
+        readonly fg_white="$(tput setaf 7 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly fg_yellow="$(tput setaf 3 2> /dev/null || true)"
+        readonly fg_yellow="$(tput setaf 3 2>/dev/null || true)"
         printf '%b' "$ta_none"
         
         # Background codes
-        readonly bg_black="$(tput setab 0 2> /dev/null || true)"
+        readonly bg_black="$(tput setab 0 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly bg_blue="$(tput setab 4 2> /dev/null || true)"
+        readonly bg_blue="$(tput setab 4 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly bg_cyan="$(tput setab 6 2> /dev/null || true)"
+        readonly bg_cyan="$(tput setab 6 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly bg_green="$(tput setab 2 2> /dev/null || true)"
+        readonly bg_green="$(tput setab 2 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly bg_magenta="$(tput setab 5 2> /dev/null || true)"
+        readonly bg_magenta="$(tput setab 5 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly bg_red="$(tput setab 1 2> /dev/null || true)"
+        readonly bg_red="$(tput setab 1 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly bg_white="$(tput setab 7 2> /dev/null || true)"
+        readonly bg_white="$(tput setab 7 2>/dev/null || true)"
         printf '%b' "$ta_none"
-        readonly bg_yellow="$(tput setab 3 2> /dev/null || true)"
+        readonly bg_yellow="$(tput setab 3 2>/dev/null || true)"
         printf '%b' "$ta_none"
     else
         # Text attributes
@@ -254,7 +255,7 @@ function cron_init() {
         # Redirect all output to a temporary file
         script_output="$(mktemp --tmpdir "$script_name".XXXXX)"
         readonly script_output
-        exec 3>&1 4>&2 1> "$script_output" 2>&1
+        exec 3>&1 4>&2 1>"$script_output" 2>&1
     fi
 }
 
@@ -275,7 +276,7 @@ function lock_init() {
         script_exit 'Missing or invalid argument to lock_init()!' 2
     fi
     
-    if mkdir "$lock_dir" 2> /dev/null; then
+    if mkdir "$lock_dir" 2>/dev/null; then
         readonly script_lock="$lock_dir"
         verbose_print "Acquired script lock: $script_lock"
     else
@@ -361,7 +362,7 @@ function check_binary() {
         script_exit 'Missing required argument to check_binary()!' 2
     fi
     
-    if ! command -v "$1" > /dev/null 2>&1; then
+    if ! command -v "$1" >/dev/null 2>&1; then
         if [[ -n ${2-} ]]; then
             script_exit "Missing dependency: Couldn't locate $1." 1
         else
@@ -423,6 +424,8 @@ function run_as_root() {
     
     if [[ $EUID -eq 0 ]]; then
         "$@"
+        elif [[ -n $(command -v doas) && -z ${skip_sudo-} ]]; then
+        doas -- "$@"
         elif [[ -z ${skip_sudo-} ]]; then
         sudo -H -- "$@"
     else
